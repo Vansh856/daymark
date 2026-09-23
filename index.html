@@ -34,11 +34,31 @@
     .brand-mark { position: relative; min-height: 34px; }
     .brand-mark::before { content: 'D'; display: inline-flex; flex: 0 0 30px; width: 30px; height: 30px; align-items: center; justify-content: center; background: var(--lime); color: var(--ink); transform: rotate(-6deg); box-shadow: 4px 4px 0 rgba(242,143,99,.7); font: 700 17px/1 var(--sans); }
     .brand-mark::after { content: ''; position: absolute; width: 7px; height: 7px; left: 18px; bottom: 5px; background: var(--orange); border: 2px solid var(--ink); }
+    .history-hero { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin: 70px 0 12px; padding: 48px; background: #dce9d8; }
+    .history-hero h2 { margin: 0; font-size: clamp(42px, 5.5vw, 76px); line-height: .98; letter-spacing: -.07em; }
+    .history-hero h2 em { color: #718e7a; font-style: normal; }
+    .history-total { display: grid; min-width: 140px; height: 140px; place-content: center; text-align: center; border: 1px solid var(--ink); border-radius: 50%; transform: rotate(6deg); }
+    .history-total strong { font-size: 42px; line-height: 1; }
+    .history-total span { margin-top: 8px; font: 10px var(--mono); text-transform: uppercase; }
+    .history-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0; }
+    .history-summary article { padding: 24px; background: var(--white); }
+    .history-summary strong, .history-summary span { display: block; }
+    .history-summary strong { font: 32px var(--mono); }
+    .history-summary span { margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .history-list { margin-top: 12px; padding: 28px; background: var(--white); }
+    .history-month-card { padding: 24px 0; border-top: 1px solid var(--line); }
+    .history-month-card h3 { margin: 0; font-size: 24px; letter-spacing: -.05em; }
+    .history-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0 16px; }
+    .history-metrics span { color: var(--muted); font: 11px var(--mono); }
+    .history-metrics strong { display: block; margin-bottom: 5px; color: var(--ink); font-size: 17px; }
+    .history-bar { height: 8px; background: var(--paper); }
+    .history-bar span { display: block; height: 100%; background: var(--lime); }
+    @media (max-width: 700px) { .history-hero { align-items: start; flex-direction: column; padding: 28px; } .history-total { align-self: end; } .history-summary { grid-template-columns: 1fr; } .history-metrics { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
 <body>
   <div id="auth-view" class="auth-shell"><section class="auth-intro"><div class="brand-mark"><span>DAY</span><strong>MARK</strong></div><p class="eyebrow">personal progress system</p><h1>Make the next day count.</h1><p class="intro-copy">A calm, accountable workspace for building your CS core and turning intentions into visible progress.</p><div class="signal-list"><span>01 / Plan</span><span>02 / Practice</span><span>03 / Reflect</span></div></section><section class="auth-panel"><div class="auth-tabs"><button class="tab active" data-auth="login">Sign in</button><button class="tab" data-auth="register">Create account</button></div><form id="auth-form"><div class="form-heading"><p class="eyebrow" id="auth-kicker">Welcome back</p><h2 id="auth-title">Pick up where you left off.</h2></div><label>Email<input id="email" type="email" required placeholder="you@example.com"></label><label>Password<input id="password" type="password" minlength="8" required placeholder="8+ characters"></label><label id="name-field" class="hidden">Your name<input id="name" type="text" placeholder="How should we call you?"></label><button class="button button-dark" type="submit" id="auth-submit">Enter dashboard <span>↗</span></button><p id="auth-message" class="form-message"></p></form><p class="fine-print">Your progress is private to your account and stored in the app database.</p></section></div>
   <div id="app-view" class="app-shell hidden"><aside class="sidebar"><div class="brand-mark"><span>DAY</span><strong>MARK</strong></div><div class="sidebar-rule"></div><nav><a class="nav-link" data-page="home" href="#home"><span>◒</span> Overview</a><a class="nav-link" data-page="daily" href="#daily"><span>□</span> Daily schedule</a><a class="nav-link" data-page="month" href="#month"><span>◷</span> Month-end goal</a><a class="nav-link" data-page="temporary" href="#temporary"><span>△</span> Temporary goals</a><a class="nav-link" data-page="longterm" href="#longterm"><span>↗</span> Long-term goals</a></nav><div class="sidebar-bottom"><div class="streak-chip"><span class="streak-dot"></span><div><strong id="sidebar-streak">0 day streak</strong><small>Keep the rhythm going</small></div></div><button id="logout-button" class="logout-button">Sign out <span>↗</span></button></div></aside><main class="main-content"><header class="topbar"><div><p class="eyebrow" id="page-kicker">Today</p><h1 id="page-greeting">Good morning, friend.</h1></div><div class="avatar" id="avatar">F</div></header><div id="page-container"></div></main></div>
-  <script src="/scripts/app.js?v=6"></script>
+  <script src="/scripts/app.js?v=7"></script>
 </body>
 </html>

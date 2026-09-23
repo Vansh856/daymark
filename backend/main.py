@@ -268,6 +268,33 @@ def logout(response: Response):
 def get_dashboard(user = Depends(get_user)):
     return dashboard(user)
 
+@app.get('/api/me/monthly-history')
+def get_monthly_history(user = Depends(get_user)):
+    with db() as connection:
+        rows = connection.execute(
+            "SELECT substr(task_date, 1, 7) AS month, task_date, COUNT(*) AS planned, COALESCE(SUM(done), 0) AS completed FROM daily_tasks WHERE user_id = ? AND task_date IS NOT NULL GROUP BY substr(task_date, 1, 7), task_date ORDER BY task_date",
+            (user['id'],),
+        ).fetchall()
+    months = {}
+    for row in rows:
+        month = months.setdefault(row['month'], {'month': row['month'], 'days': [], 'planned_tasks': 0, 'completed_tasks': 0})
+        planned = int(row['planned'])
+        completed = int(row['completed'])
+        rate = round(completed / planned * 100) if planned else 0
+        month['days'].append({'date': row['task_date'], 'planned': planned, 'completed': completed, 'rate': rate})
+        month['planned_tasks'] += planned
+        month['completed_tasks'] += completed
+    history = []
+    for month in months.values():
+        days = month['days']
+        month['active_days'] = len(days)
+        month['above_70_days'] = sum(day['rate'] >= 70 for day in days)
+        month['average_daily_rate'] = round(sum(day['rate'] for day in days) / len(days)) if days else 0
+        month['completion_rate'] = round(month['completed_tasks'] / month['planned_tasks'] * 100) if month['planned_tasks'] else 0
+        month['best_day'] = max(days, key=lambda day: (day['rate'], day['completed']), default=None)
+        history.append(month)
+    return {'months': history}
+
 @app.put('/api/progress/{task}')
 def update_progress(task: int, update: ProgressUpdate, user = Depends(get_user)):
     if task not in range(3):
