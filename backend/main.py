@@ -473,3 +473,7 @@ app.mount('/assets', StaticFiles(directory=ROOT / 'assets'), name='assets')
 @app.get('/')
 def index():
     return FileResponse(ROOT / 'index.html')
+
+@app.get('/favicon.ico')
+def favicon():
+    return FileResponse(ROOT / 'assets' / 'daymark-favicon.svg', media_type='image/svg+xml')
