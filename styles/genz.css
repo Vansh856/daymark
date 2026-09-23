@@ -151,6 +151,8 @@ button:active { transform: translateY(1px) scale(.98); }
 .daily-add-panel p:not(.eyebrow):not(.form-message) { color: rgba(255,255,255,.65); font-size: 12px; line-height: 1.5; }
 .daily-add-panel label { color: rgba(255,255,255,.65); }
 .daily-add-panel input, .daily-add-panel select { color: var(--white); border-color: rgba(255,255,255,.25); }
+.daily-add-panel select { background: rgba(255,255,255,.08); color: var(--white); border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 11px 12px; }
+.daily-add-panel select option { background: var(--white); color: var(--ink); }
 .daily-add-panel input::placeholder { color: rgba(255,255,255,.42); }
 .daily-add-panel .button-dark { background: var(--lime); color: var(--ink); box-shadow: 5px 5px 0 var(--orange); }
 .daily-add-panel .button-dark:hover { box-shadow: 8px 8px 0 var(--pink); }
