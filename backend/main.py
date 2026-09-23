@@ -468,6 +468,7 @@ def save_note(note: NoteCreate, user = Depends(get_user)):
 
 app.mount('/styles', StaticFiles(directory=ROOT / 'styles'), name='styles')
 app.mount('/scripts', StaticFiles(directory=ROOT / 'scripts'), name='scripts')
+app.mount('/assets', StaticFiles(directory=ROOT / 'assets'), name='assets')
 
 @app.get('/')
 def index():
