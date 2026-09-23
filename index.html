@@ -29,8 +29,9 @@
     .completed-toggle { display: block; width: 100%; margin-top: 10px; padding: 8px 0; background: transparent; color: var(--muted); font: 10px var(--mono); text-align: left; }
     .completed-toggle:hover { color: var(--ink); }
     .brand-mark { align-items: center; gap: 9px; }
-    .brand-mark::before { content: ''; display: inline-block; width: 24px; height: 24px; background: var(--lime); transform: rotate(-6deg); box-shadow: 4px 4px 0 rgba(242,143,99,.7); }
-    .brand-mark::after { content: '▮▮'; position: absolute; margin-left: 6px; color: var(--ink); font: 700 10px/24px var(--mono); letter-spacing: -3px; }
+    .brand-mark { position: relative; min-height: 34px; }
+    .brand-mark::before { content: 'D'; display: inline-flex; flex: 0 0 30px; width: 30px; height: 30px; align-items: center; justify-content: center; background: var(--lime); color: var(--ink); transform: rotate(-6deg); box-shadow: 4px 4px 0 rgba(242,143,99,.7); font: 700 17px/1 var(--sans); }
+    .brand-mark::after { content: ''; position: absolute; width: 7px; height: 7px; left: 18px; bottom: 5px; background: var(--orange); border: 2px solid var(--ink); }
   </style>
 </head>
 <body>
