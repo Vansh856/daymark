@@ -2,18 +2,21 @@ from datetime import date, datetime, timedelta
 import os
 import smtplib
 from email.message import EmailMessage
-from pathlib import Path
 import hashlib
 import secrets
-import sqlite3
+from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
+import psycopg
+from psycopg.rows import dict_row
+from psycopg.errors import UniqueViolation
 
 ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / 'daymark.db'
+DATABASE_URL = os.getenv('DATABASE_URL')
+SESSION_COOKIE = 'daymark_session'
 app = FastAPI(title='Daymark API')
 
 class Credentials(BaseModel):
@@ -59,36 +62,49 @@ class TimedSubtaskUpdate(BaseModel):
     title: str | None = None
     order: int | None = None
 
+class DatabaseConnection:
+    def __init__(self):
+        if not DATABASE_URL:
+            raise RuntimeError('DATABASE_URL is not configured')
+        self.connection = psycopg.connect(DATABASE_URL, row_factory=dict_row)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception, traceback):
+        if exception_type:
+            self.connection.rollback()
+        else:
+            self.connection.commit()
+        self.connection.close()
+
+    def execute(self, query, parameters=()):
+        return self.connection.execute(query.replace('?', '%s'), parameters)
+
+    def executescript(self, script):
+        for statement in script.split(';'):
+            if statement.strip():
+                self.execute(statement)
+
+
 def db():
-    connection = sqlite3.connect(DB_PATH)
-    connection.row_factory = sqlite3.Row
-    return connection
+    return DatabaseConnection()
 
 def init_db():
     with db() as connection:
         connection.executescript('''
-        CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS users (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS progress (user_id INTEGER NOT NULL, day INTEGER NOT NULL, task INTEGER NOT NULL, done INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, PRIMARY KEY(user_id, day, task));
         CREATE TABLE IF NOT EXISTS sector_progress (user_id INTEGER NOT NULL, sector TEXT NOT NULL, item INTEGER NOT NULL, done INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, PRIMARY KEY(user_id, sector, item));
-        CREATE TABLE IF NOT EXISTS daily_tasks (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, day INTEGER NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, time TEXT NOT NULL, motive TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS monthly_goals (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, month TEXT NOT NULL, title TEXT NOT NULL, motive TEXT NOT NULL, created_at TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS monthly_subgoals (id INTEGER PRIMARY KEY, goal_id INTEGER NOT NULL, title TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0);
-        CREATE TABLE IF NOT EXISTS timed_goals (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL, motive TEXT NOT NULL, created_at TEXT NOT NULL, deadline TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0);
-        CREATE TABLE IF NOT EXISTS timed_subtasks (id INTEGER PRIMARY KEY, goal_id INTEGER NOT NULL, title TEXT NOT NULL, created_at TEXT NOT NULL, deadline TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, sort_order INTEGER NOT NULL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS daily_tasks (id BIGSERIAL PRIMARY KEY, user_id INTEGER NOT NULL, day INTEGER NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, time TEXT NOT NULL, motive TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, task_date TEXT);
+        CREATE TABLE IF NOT EXISTS monthly_goals (id BIGSERIAL PRIMARY KEY, user_id INTEGER NOT NULL, month TEXT NOT NULL, title TEXT NOT NULL, motive TEXT NOT NULL, created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS monthly_subgoals (id BIGSERIAL PRIMARY KEY, goal_id INTEGER NOT NULL, title TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS timed_goals (id BIGSERIAL PRIMARY KEY, user_id INTEGER NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL, motive TEXT NOT NULL, created_at TEXT NOT NULL, deadline TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS timed_subtasks (id BIGSERIAL PRIMARY KEY, goal_id INTEGER NOT NULL, title TEXT NOT NULL, created_at TEXT NOT NULL, deadline TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, sort_order INTEGER NOT NULL DEFAULT 0);
         CREATE TABLE IF NOT EXISTS goal_notifications (goal_id INTEGER NOT NULL, threshold INTEGER NOT NULL, sent_at TEXT NOT NULL, PRIMARY KEY(goal_id, threshold));
-        CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, day INTEGER NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS notes (id BIGSERIAL PRIMARY KEY, user_id INTEGER NOT NULL, day INTEGER NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
         ''')
-        columns = {row['name'] for row in connection.execute('PRAGMA table_info(daily_tasks)').fetchall()}
-        if 'task_date' not in columns:
-            connection.execute('ALTER TABLE daily_tasks ADD COLUMN task_date TEXT')
-            connection.execute("UPDATE daily_tasks SET task_date = substr(created_at, 1, 10) WHERE task_date IS NULL")
-
-        for table, column in [('monthly_subgoals', 'sort_order'), ('timed_subtasks', 'sort_order')]:
-            columns = {row['name'] for row in connection.execute(f'PRAGMA table_info({table})').fetchall()}
-            if column not in columns:
-                connection.execute(f'ALTER TABLE {table} ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0')
-            connection.execute(f'UPDATE {table} SET {column} = rowid - 1 WHERE {column} = 0 OR {column} IS NULL')
 
 @app.on_event('startup')
 def startup():
@@ -97,11 +113,12 @@ def startup():
 def password_hash(password):
     return hashlib.pbkdf2_hmac('sha256', password.encode(), b'daymark-v1', 120000).hex()
 
-def get_user(authorization: str = Header(default='')):
-    if not authorization.startswith('Bearer '):
+def get_user(authorization: str = Header(default=''), session_cookie: str = Cookie(default='', alias=SESSION_COOKIE)):
+    token = authorization[7:] if authorization.startswith('Bearer ') else session_cookie
+    if not token:
         raise HTTPException(401, 'Sign in to continue')
     with db() as connection:
-        row = connection.execute('SELECT u.* FROM users u JOIN sessions s ON s.user_id = u.id WHERE s.token = ? AND s.expires_at > ?', (authorization[7:], datetime.utcnow().isoformat())).fetchone()
+        row = connection.execute('SELECT u.* FROM users u JOIN sessions s ON s.user_id = u.id WHERE s.token = ? AND s.expires_at > ?', (token, datetime.utcnow().isoformat())).fetchone()
     if not row:
         raise HTTPException(401, 'Your session has expired')
     return row
@@ -175,7 +192,7 @@ def check_goal_reminders(user, goals):
                         except (OSError, smtplib.SMTPException):
                             pass
                         finally:
-                            connection.execute('INSERT OR IGNORE INTO goal_notifications VALUES (?, ?, ?)', (goal['id'], threshold, datetime.utcnow().isoformat()))
+                            connection.execute('INSERT INTO goal_notifications VALUES (?, ?, ?) ON CONFLICT DO NOTHING', (goal['id'], threshold, datetime.utcnow().isoformat()))
 
 def dashboard(user):
     current_date = date.today()
@@ -214,26 +231,38 @@ def dashboard(user):
     analysis = {'month': current_month, 'total_tasks': monthly_total, 'completed_tasks': monthly_completed, 'completion_rate': round(monthly_completed / monthly_total * 100) if monthly_total else 0, 'active_days': len(month_rows), 'days': [dict(row) for row in month_rows]}
     return {'user': {'name': user['name'], 'email': user['email']}, 'date': current_date.isoformat(), 'date_label': current_date.strftime('%A, %d %B %Y'), 'day': current_day, 'daily_tasks': daily_tasks, 'monthly_goals': monthly_goals, 'timed_goals': timed_goals, 'analysis': analysis, 'tasks': tasks, 'sectors': sectors, 'days_complete': len(completed_days), 'streak': len(completed_days), 'note': today_note['content'] if today_note else ''}
 
+def set_session_cookie(response: Response, token: str, request: Request):
+    response.set_cookie(SESSION_COOKIE, token, max_age=14 * 24 * 60 * 60, httponly=True, samesite='lax', secure=request.url.scheme == 'https')
+
 @app.post('/api/auth/register')
-def register(credentials: Credentials):
+def register(credentials: Credentials, request: Request, response: Response):
     if len(credentials.password) < 8:
         raise HTTPException(400, 'Password must be at least 8 characters')
     name = credentials.name.strip() or credentials.email.split('@')[0]
     try:
         with db() as connection:
-            cursor = connection.execute('INSERT INTO users (name, email, password_hash, created_at) VALUES (?, ?, ?, ?)', (name, credentials.email.lower(), password_hash(credentials.password), datetime.utcnow().isoformat()))
-            user_id = cursor.lastrowid
-    except sqlite3.IntegrityError:
+            cursor = connection.execute('INSERT INTO users (name, email, password_hash, created_at) VALUES (?, ?, ?, ?) RETURNING id', (name, credentials.email.lower(), password_hash(credentials.password), datetime.utcnow().isoformat()))
+            user_id = cursor.fetchone()['id']
+    except UniqueViolation:
         raise HTTPException(409, 'An account with that email already exists')
-    return {'token': create_session(user_id)}
+    token = create_session(user_id)
+    set_session_cookie(response, token, request)
+    return {'token': token}
 
 @app.post('/api/auth/login')
-def login(credentials: Credentials):
+def login(credentials: Credentials, request: Request, response: Response):
     with db() as connection:
         user = connection.execute('SELECT * FROM users WHERE email = ?', (credentials.email.lower(),)).fetchone()
     if not user or user['password_hash'] != password_hash(credentials.password):
         raise HTTPException(401, 'Email or password is incorrect')
-    return {'token': create_session(user['id'])}
+    token = create_session(user['id'])
+    set_session_cookie(response, token, request)
+    return {'token': token}
+
+@app.post('/api/auth/logout')
+def logout(response: Response):
+    response.delete_cookie(SESSION_COOKIE)
+    return {'ok': True}
 
 @app.get('/api/me/dashboard')
 def get_dashboard(user = Depends(get_user)):
