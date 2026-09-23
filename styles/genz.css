@@ -89,6 +89,12 @@ button:active { transform: translateY(1px) scale(.98); }
 .subtask-toggle, .completed-toggle { color: #6f548d; font-family: var(--mono); letter-spacing: .04em; }
 .subtask-toggle:hover, .completed-toggle:hover { color: var(--ink); background: rgba(217,240,106,.35); padding-left: 8px; }
 .completed-subtasks { background: rgba(32,32,51,.025); border-radius: 6px; padding: 12px 14px; }
+.completed-goals-block { margin-top: 28px; padding: 28px; background: rgba(32,32,51,.04); border: 1px solid rgba(32,32,51,.1); }
+.completed-goals-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 16px; }
+.completed-goals-heading h3 { margin: 0; font-size: 25px; letter-spacing: -.04em; }
+.completed-goals-heading h3 span { color: var(--muted); font: 14px var(--mono); }
+.completed-goal-list { display: grid; gap: 12px; }
+.completed-goal-list .month-goal-card, .completed-goal-list .timed-goal-card { opacity: .78; }
 .completed-heading { color: #8a65a8; }
 .task-check.is-complete { box-shadow: 0 0 0 3px rgba(217,240,106,.25); }
 
