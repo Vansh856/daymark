@@ -232,7 +232,7 @@ def dashboard(user):
     return {'user': {'name': user['name'], 'email': user['email']}, 'date': current_date.isoformat(), 'date_label': current_date.strftime('%A, %d %B %Y'), 'day': current_day, 'daily_tasks': daily_tasks, 'monthly_goals': monthly_goals, 'timed_goals': timed_goals, 'analysis': analysis, 'tasks': tasks, 'sectors': sectors, 'days_complete': len(completed_days), 'streak': len(completed_days), 'note': today_note['content'] if today_note else ''}
 
 def set_session_cookie(response: Response, token: str, request: Request):
-    response.set_cookie(SESSION_COOKIE, token, max_age=14 * 24 * 60 * 60, httponly=True, samesite='lax', secure=request.url.scheme == 'https')
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite='lax', secure=request.url.scheme == 'https')
 
 @app.post('/api/auth/register')
 def register(credentials: Credentials, request: Request, response: Response):
