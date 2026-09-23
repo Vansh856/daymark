@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+daymark.db
+*.sqlite
+*.sqlite3
+assets/
+backend/__pycache__/
+scripts/script-*.js
+styles/style-*.css
