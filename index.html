@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles/app.css">
   <link rel="stylesheet" href="/styles/vibrant.css">
-  <link rel="stylesheet" href="/styles/genz.css?v=4">
+  <link rel="stylesheet" href="/styles/genz.css?v=5">
   <style>
     .subgoal-row,
     .timed-subtask { grid-template-columns: 28px minmax(0, 1fr) auto; }
@@ -33,6 +33,6 @@
 <body>
   <div id="auth-view" class="auth-shell"><section class="auth-intro"><div class="brand-mark"><span>DAY</span><strong>MARK</strong></div><p class="eyebrow">personal progress system</p><h1>Make the next day count.</h1><p class="intro-copy">A calm, accountable workspace for building your CS core and turning intentions into visible progress.</p><div class="signal-list"><span>01 / Plan</span><span>02 / Practice</span><span>03 / Reflect</span></div></section><section class="auth-panel"><div class="auth-tabs"><button class="tab active" data-auth="login">Sign in</button><button class="tab" data-auth="register">Create account</button></div><form id="auth-form"><div class="form-heading"><p class="eyebrow" id="auth-kicker">Welcome back</p><h2 id="auth-title">Pick up where you left off.</h2></div><label>Email<input id="email" type="email" required placeholder="you@example.com"></label><label>Password<input id="password" type="password" minlength="8" required placeholder="8+ characters"></label><label id="name-field" class="hidden">Your name<input id="name" type="text" placeholder="How should we call you?"></label><button class="button button-dark" type="submit" id="auth-submit">Enter dashboard <span>↗</span></button><p id="auth-message" class="form-message"></p></form><p class="fine-print">Your progress is private to your account and stored in the app database.</p></section></div>
   <div id="app-view" class="app-shell hidden"><aside class="sidebar"><div class="brand-mark"><span>DAY</span><strong>MARK</strong></div><div class="sidebar-rule"></div><nav><a class="nav-link" data-page="home" href="#home"><span>◒</span> Overview</a><a class="nav-link" data-page="daily" href="#daily"><span>□</span> Daily schedule</a><a class="nav-link" data-page="month" href="#month"><span>◷</span> Month-end goal</a><a class="nav-link" data-page="temporary" href="#temporary"><span>△</span> Temporary goals</a><a class="nav-link" data-page="longterm" href="#longterm"><span>↗</span> Long-term goals</a></nav><div class="sidebar-bottom"><div class="streak-chip"><span class="streak-dot"></span><div><strong id="sidebar-streak">0 day streak</strong><small>Keep the rhythm going</small></div></div><button id="logout-button" class="logout-button">Sign out <span>↗</span></button></div></aside><main class="main-content"><header class="topbar"><div><p class="eyebrow" id="page-kicker">Today</p><h1 id="page-greeting">Good morning, friend.</h1></div><div class="avatar" id="avatar">F</div></header><div id="page-container"></div></main></div>
-  <script src="/scripts/app.js?v=5"></script>
+  <script src="/scripts/app.js?v=6"></script>
 </body>
 </html>
